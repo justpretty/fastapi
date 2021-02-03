@@ -19,10 +19,12 @@ public class DefaultWebConfig implements iWebConfig
         }
         ArrayList<Class> classes = Reflector.Default.getAllClassByInterface(iWebConfig.class);
         classes.forEach(a->{
+            iApp.debug("iWebConfig.forEach",a.getName());
             if(!a.equals(DefaultWebConfig.class))
             {
                 try
                 {
+                    iApp.debug("iWebConfig.current",a.getName());
                     current= (iWebConfig) a.newInstance();
                 }
                 catch (Exception e)
@@ -33,6 +35,7 @@ public class DefaultWebConfig implements iWebConfig
         });
         if(current==null)
         {
+            iApp.debug("iWebConfig.current2",DefaultWebConfig.class.getName());
             current=new DefaultWebConfig();
         }
         return current;

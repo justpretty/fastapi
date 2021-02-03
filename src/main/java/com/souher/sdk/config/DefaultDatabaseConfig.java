@@ -19,11 +19,13 @@ public class DefaultDatabaseConfig implements iDatabaseConfig
         }
         ArrayList<Class> classes = Reflector.Default.getAllClassByInterface(iDatabaseConfig.class);
         classes.forEach(a->{
+            iApp.debug("iDatabaseConfig.forEach",a.getName());
             if(!a.equals(DefaultDatabaseConfig.class))
             {
                 try
                 {
                     current= (iDatabaseConfig) a.newInstance();
+                    iApp.debug("iDatabaseConfig.current",a.getName());
                 }
                 catch (Exception e)
                 {
@@ -34,6 +36,7 @@ public class DefaultDatabaseConfig implements iDatabaseConfig
         if(current==null)
         {
             current=new DefaultDatabaseConfig();
+            iApp.debug("iDatabaseConfig.current2",DefaultDatabaseConfig.class.getName());
         }
         return current;
     }

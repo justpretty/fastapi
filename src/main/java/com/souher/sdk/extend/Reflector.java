@@ -1,5 +1,6 @@
 package com.souher.sdk.extend;
 
+import com.souher.sdk.App;
 import com.souher.sdk.database.DataModel;
 import com.souher.sdk.database.DataResult;
 import com.souher.sdk.iApp;
@@ -69,7 +70,7 @@ public class Reflector {
                 if(allClass.size()==0)
                 {
                     String path = iApp.JarFile().getAbsolutePath();
-                    String packageName1 = iAppConfig.webConfig().getClass().getPackage().getName();
+                    String packageName1 = App.mainClass.getPackage().getName();
                     String[] packages1 = packageName1.split("\\.");
                     String packageName="";
                     for(int i=0;i<packages1.length;i++)

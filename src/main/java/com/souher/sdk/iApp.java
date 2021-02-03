@@ -1,6 +1,7 @@
 package com.souher.sdk;
 
 import com.souher.sdk.business.CacheRequestWorker;
+import com.souher.sdk.database.DataResult;
 import com.souher.sdk.extend.InterfaceExecutor;
 import com.souher.sdk.extend.Reflector;
 import com.souher.sdk.interfaces.iApi;
@@ -8,6 +9,11 @@ import com.souher.sdk.interfaces.iOnAppReady;
 import com.souher.sdk.task.CronTask;
 
 import java.io.File;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.net.URL;
+import java.security.CodeSource;
+import java.security.ProtectionDomain;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -119,16 +125,45 @@ public interface iApp
 
     static File JarFile()
     {
-        String path = App.class.getProtectionDomain().getCodeSource().getLocation().getFile();
+        if(App.jarFile!=null)
+        {
+            return App.jarFile;
+        }
         try
         {
+            Class<?> cls=Class.forName("sun.launcher.LauncherHelper");
+            Method[] methods=cls.getDeclaredMethods();
+            Method method=null;
+            DataResult<String> methodList=new DataResult<>();
+            for (int i = 0; i < methods.length; i++)
+            {
+                if(methods[i].getName().equals("getApplicationClass")
+                &&methods[i].getParameterCount()==0
+                        && Modifier.isStatic(methods[i].getModifiers())
+                )
+                {
+                    method=methods[i];
+                    methodList.add(methods[i].getName());
+                }
+            }
+            Object obj=  method.invoke(null);
+            Class<?> cls1= (Class<?>) obj;
+            App.mainClass=cls1;
+            ProtectionDomain cls2=cls1.getProtectionDomain();
+            CodeSource codeSource=cls2.getCodeSource();
+            URL url=codeSource.getLocation();
+            String path=url.getPath();
             path = java.net.URLDecoder.decode(path, "UTF-8"); // 转换处理中文及空格
+            iApp.debug("jarFile:",path);
+            App.jarFile=new File(path);
+           // iApp.debug("jarFile2:",App.jarFile.getAbsolutePath());
+            return App.jarFile;
         }
-        catch (java.io.UnsupportedEncodingException e)
+        catch (Exception e)
         {
             return null;
         }
-        return new File(path);
+
     }
 
     static void init(String[] args)
