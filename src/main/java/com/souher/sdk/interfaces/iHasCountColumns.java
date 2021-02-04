@@ -21,7 +21,7 @@ public interface iHasCountColumns extends iOnDataInserted, iOnDataDeleted, iMult
 
     String[] countCoumns();
 
-    default int countColumnTriggerCachedIntervalMinutes()
+    default int countColumnTriggerCacheIntervalMinutes(DataModel dataModel)
     {
         return 0;
     }
@@ -29,19 +29,19 @@ public interface iHasCountColumns extends iOnDataInserted, iOnDataDeleted, iMult
 
     default void onEveryMinute(Long tick) throws Exception
     {
-        if(countColumnTriggerCachedIntervalMinutes()<=0|| countColumnTriggerCachedIntervalMinutes()>59)
+        if(countColumnTriggerCacheIntervalMinutes((DataModel) this)<=0|| countColumnTriggerCacheIntervalMinutes((DataModel) this)>59)
         {
             return;
         }
         Date date=new Date(tick);
         String minuteString=iApp.m.format(date);
         int minute=Integer.parseInt(minuteString);
-        if(minute% countColumnTriggerCachedIntervalMinutes()!=0)
+        if(minute% countColumnTriggerCacheIntervalMinutes((DataModel) this)!=0)
         {
             return;
         }
         DataModel model=((Class<? extends DataModel> )this.getClass()).newInstance();
-        model.option().append(DatabaseOptions.raw,"(#TABLE#.`count_change_time` >= '"+iApp.yyyyMMddHHmmss.format(new Date(tick- (long) countColumnTriggerCachedIntervalMinutes() *60*1000))+"' and #TABLE#.`count_change_time`=#TABLE#.`update_datetime`)");
+        model.option().append(DatabaseOptions.raw,"(#TABLE#.`count_change_time` >= '"+iApp.yyyyMMddHHmmss.format(new Date(tick- (long) countColumnTriggerCacheIntervalMinutes((DataModel) this) *60*1000))+"' and #TABLE#.`count_change_time`=#TABLE#.`update_datetime`)");
         DataResult<? extends DataModel> all=model.selectSimilarModels((Class<? extends DataModel> )this.getClass());
         CacheModelWorker.Current.clearAllCache((Class<? extends DataModel>) this.getClass());
         CacheRequestWorker.Current.onMultiDataUpdated(all);
@@ -102,7 +102,7 @@ public interface iHasCountColumns extends iOnDataInserted, iOnDataDeleted, iMult
                 my.set(dataModel,e);
                 dataModel.increase(a);
                 dataModel.setUpdateWithoutId();
-                if(countColumnTriggerCachedIntervalMinutes()>0)
+                if(countColumnTriggerCacheIntervalMinutes(model)>0)
                 {
                     Field count_change_time=cls.getDeclaredField("count_change_time");
                     count_change_time.set(dataModel,iApp.yyyyMMddHHmmss.format(new Date()));
