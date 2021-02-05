@@ -199,8 +199,8 @@ public class CacheRequestWorker implements iOnDataInserted,iOnDataUpdated,iOnDat
             {
                 return;
             }
-            ids.remove(key);
             DataResult<String> list=DataResult.castE(ids.get(key));
+
             for (int i = 0; i < list.size(); i++)
             {
                 String request=list.get(i);
@@ -277,6 +277,7 @@ public class CacheRequestWorker implements iOnDataInserted,iOnDataUpdated,iOnDat
                     cacheList.put(request,JSON.toJSONString(arr));
                 }
             }
+            ids.remove(key);
         }
         catch (Exception e)
         {
