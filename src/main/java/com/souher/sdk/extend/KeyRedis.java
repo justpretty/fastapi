@@ -2,6 +2,7 @@ package com.souher.sdk.extend;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.serializer.SerializerFeature;
+import com.souher.sdk.iApp;
 import com.souher.sdk.iRedis;
 import redis.clients.jedis.Jedis;
 
@@ -25,6 +26,11 @@ public class KeyRedis
     }
     private String myKey(String rediskey)
     {
+        int index=tag.length();
+        return rediskey.substring(index+1);
+    }
+    private String myKey1(String rediskey)
+    {
         int index=rediskey.lastIndexOf(":");
         return rediskey.substring(index+1);
     }
@@ -39,6 +45,7 @@ public class KeyRedis
         Jedis jedis= iRedis.getJedis();
         jedis.set(jedisKey(key),value);
         jedis.close();
+        iApp.debug("redis."+tag+".added",key);
     }
 
     public ArrayList<String> keys(String pattern)
@@ -59,7 +66,7 @@ public class KeyRedis
         Set<String> sets=jedis.keys(jedisKey(pattern));
         ConcurrentHashMap<String,String> list=new ConcurrentHashMap<>();
         sets.forEach(a->{
-            list.put(myKey(a),myKey2(a));
+            list.put(myKey1(a),myKey2(a));
         });
         jedis.close();
         return list;
@@ -87,6 +94,7 @@ public class KeyRedis
         Jedis jedis= iRedis.getJedis();
         jedis.del(jedisKey(key));
         jedis.close();
+        iApp.debug("redis."+tag+".removed",key);
     }
     public boolean containsKey(String key)
     {

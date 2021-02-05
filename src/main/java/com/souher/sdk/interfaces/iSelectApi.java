@@ -110,7 +110,7 @@ public interface iSelectApi extends iJSONApi
 
             DataResult<? extends DataModel> result=a.selectSimilarModels(a.getClass());
             map.put(apiTagName,result);
-            iApp.debug("iSelectApi.getJSON.savecache:"+apiTagName+":"+result.toString());
+            iApp.debug("iSelectApi.getJSON.savecache:"+apiTagName+":"+result.toString()+" @@@ idData:"+JSON.toJSONString(result.idListData()));
             //if(iAppConfig.webConfig().apiVersion().isEmpty())
             //{
             new ExtendThread(()->{

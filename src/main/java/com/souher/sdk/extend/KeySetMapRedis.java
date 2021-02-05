@@ -2,6 +2,7 @@ package com.souher.sdk.extend;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.serializer.SerializerFeature;
+import com.souher.sdk.iApp;
 import com.souher.sdk.iRedis;
 import redis.clients.jedis.Jedis;
 
@@ -12,7 +13,6 @@ import java.util.function.BiConsumer;
 
 public class KeySetMapRedis
 {
-
     private String tag="";
 
     public KeySetMapRedis(String tag)
@@ -25,7 +25,7 @@ public class KeySetMapRedis
     }
     private String myKey(String rediskey)
     {
-        int index=rediskey.lastIndexOf(":");
+        int index=tag.length();
         return rediskey.substring(index+1);
     }
 
@@ -34,6 +34,7 @@ public class KeySetMapRedis
         Jedis jedis= iRedis.getJedis();
         jedis.sadd(jedisKey(key),value);
         jedis.close();
+        iApp.debug("redis."+tag+".added",key);
     }
 
     public void foreach(BiConsumer<String, Set<String>> action)
@@ -80,6 +81,7 @@ public class KeySetMapRedis
         Jedis jedis= iRedis.getJedis();
         jedis.del(jedisKey(key));
         jedis.close();
+        iApp.debug("redis."+tag+".removed",key);
     }
     public boolean containsKey(String key)
     {

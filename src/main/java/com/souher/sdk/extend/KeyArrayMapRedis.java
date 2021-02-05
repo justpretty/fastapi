@@ -24,7 +24,7 @@ public class KeyArrayMapRedis {
     }
     private String myKey(String rediskey)
     {
-        int index=rediskey.lastIndexOf(":");
+        int index=tag.length();
         return rediskey.substring(index+1);
     }
 

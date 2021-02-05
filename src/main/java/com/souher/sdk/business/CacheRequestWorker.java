@@ -16,6 +16,7 @@ import redis.clients.jedis.Jedis;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -83,7 +84,6 @@ public class CacheRequestWorker implements iOnDataInserted,iOnDataUpdated,iOnDat
     {
         try
         {
-
             request=request.replaceAll(":","@=");
             String json=JSON.toJSONString(result);
             if(result instanceof DataModel)
@@ -135,13 +135,15 @@ public class CacheRequestWorker implements iOnDataInserted,iOnDataUpdated,iOnDat
                         {
                             return;
                         }
-                        ids.append(idKey(cls,id),finalRequest);
+                        String key=idKey(cls,id);
+                        ids.append(key,finalRequest);
                     });
                 });
             }
             else
             {
-                ids.append(idKey(requestmodel.getClass(),requestmodel.id()),finalRequest);
+                String key=idKey((Class<? extends DataModel>) result.getClass(),((DataModel)result).id());
+                ids.append(key,finalRequest);
             }
         }
         catch (Exception e)
@@ -204,17 +206,35 @@ public class CacheRequestWorker implements iOnDataInserted,iOnDataUpdated,iOnDat
             for (int i = 0; i < list.size(); i++)
             {
                 String request=list.get(i);
-                if(cacheOne.containsKey(request))
+                ArrayList<String> oneKeyList=cacheOne.keys("*:"+request);
+                if(oneKeyList.size()>0)
                 {
-                    cacheOne.remove(request);
-                }
-                else if(cacheList.containsKey(request))
-                {
-                    DataResult<? extends DataModel> arr=JSON.parseObject(cacheList.get(request),DataResult.class);
-                    if(arr.size()==0)
+                    for (int i1 = 0; i1 < oneKeyList.size(); i1++)
                     {
-                        return;
+                        cacheOne.remove(oneKeyList.get(i));
                     }
+                    continue;
+                }
+
+                ArrayList<String> listKeyList=cacheList.keys("*:"+request);
+                if(listKeyList.size()==0)
+                {
+                    continue;
+                }
+                for (int i1 = 0; i1 < listKeyList.size(); i1++)
+                {
+                    String totalKey=listKeyList.get(i);
+                    String clsName=totalKey.substring(0,totalKey.indexOf(":"));
+                    Class<? extends DataModel> modelClass=Reflector.Default.searchDataModelClass(clsName.toLowerCase());
+                    JSONArray arr1=JSON.parseArray(cacheList.get(totalKey));
+                    if(arr1==null||arr1.size()==0)
+                    {
+                        continue;
+                    }
+                    DataResult<? extends DataModel> arr=new DataResult();
+                    arr1.forEach(a->{
+                        arr.add(JSON.parseObject(a.toString(), (Type) modelClass));
+                    });
                     DataModel first=arr.get(0);
                     DataResult<Class<? extends DataModel>> clses=new DataResult<>();
                     if(iHasForeignKeys.class.isAssignableFrom(first.getClass()))
@@ -231,7 +251,7 @@ public class CacheRequestWorker implements iOnDataInserted,iOnDataUpdated,iOnDat
                             if(idvalue==null)
                             {
                                 iApp.error("cached data has null id:"+request+":"+a.toString());
-                                return;
+                                continue;
                             }
                             if(idvalue.equals(model.id()))
                             {
@@ -274,7 +294,7 @@ public class CacheRequestWorker implements iOnDataInserted,iOnDataUpdated,iOnDat
                     {
                         arr.remove(delete);
                     }
-                    cacheList.put(request,JSON.toJSONString(arr));
+                    cacheList.put(listKeyList.get(i),JSON.toJSONString(arr));
                 }
             }
             ids.remove(key);
@@ -337,7 +357,7 @@ public class CacheRequestWorker implements iOnDataInserted,iOnDataUpdated,iOnDat
             iApp.debug(this.getClass().getSimpleName()+":updateKeys",updateKeys.toString());
             for (int i = 0; i < updateKeys.size(); i++)
             {
-                DataResult<String> list=DataResult.castE(properties.get(propertyKey(model.getClass(),updateKeys.get(i))));
+                DataResult<String> list=DataResult.castE(properties.get(updateKeys.get(i)));
                 for (int i1 = 0; i1 < list.size(); i1++)
                 {
                     try
