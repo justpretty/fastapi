@@ -85,17 +85,21 @@ public class TriggerApi implements iApi
                 switch (method)
                 {
                     case "insert":
-                        InterfaceExecutor.Current.executorOrderly(iOnDataInserted.class,dataModel);
-                        InterfaceExecutor.Current.executorOrderly(iOnDataSaved.class,dataModel);
+                        InterfaceExecutor.Current.executor(iOnDataInserted.class,dataModel);
+                        InterfaceExecutor.Current.executor(iOnDataSaved.class,dataModel);
                         result.put("success","ok");
                         break;
                     case "update":
-                        InterfaceExecutor.Current.executorOrderly(iOnDataUpdated.class,dataModel);
-                        InterfaceExecutor.Current.executorOrderly(iOnDataSaved.class,dataModel);
+                        InterfaceExecutor.Current.executor(iOnDataUpdated.class,dataModel);
+                        InterfaceExecutor.Current.executor(iOnDataSaved.class,dataModel);
                         result.put("success","ok");
                         break;
                     case "delete":
-                        dataModel.delete();
+                        int num=dataModel.delete();
+                        if(num<=0)
+                        {
+                            InterfaceExecutor.Current.executor(iOnDataDeleted.class,dataModel);
+                        }
                         result.put("success","ok");
                         break;
                     default:

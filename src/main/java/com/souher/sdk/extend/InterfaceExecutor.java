@@ -21,7 +21,7 @@ public class InterfaceExecutor {
     }
     public void check(Class interfaceClass,String methodName,Object... object) throws Exception
     {
-
+        iApp.debug(InterfaceExecutor.class.getSimpleName()+".check",interfaceClass.getSimpleName());
         ArrayList<Class> classes=reflector.getAllClassByInterface(interfaceClass);
         if(methodName==null)
         {
@@ -29,7 +29,7 @@ public class InterfaceExecutor {
             methodName=executeMethod.getName();
         }
         String finalMethodName = methodName;
-
+        iApp.debug(InterfaceExecutor.class.getSimpleName()+".checking",classes.size()+":"+classes.toString());
         for(Class cls :classes)
         {
             if(cls.isInterface())
@@ -86,7 +86,7 @@ public class InterfaceExecutor {
         }
     }
 
-    public void executorLimited(boolean isMainThead,String methodName,long threadSize,ArrayList<String> preRestrictedTypes, Class interfaceClass,Object... object) {
+    public void executorLimited(boolean isMainThead,String methodName,long threadSize,ArrayList<String> preRestrictedTypes,DataResult<Class> clsData, Class interfaceClass, Object... object) {
 
         ArrayList<Class> classes=reflector.getAllClassByInterface(interfaceClass);
 
@@ -124,7 +124,7 @@ public class InterfaceExecutor {
                 if(!cls.equals(interfaceClass))
                 {
                     //restrictedTypes.clear();
-                    executorLimited(isMainThead,methodName,threadSize,restrictedTypes,cls,object);
+                    executorLimited(isMainThead,methodName,threadSize,restrictedTypes,clsData,cls,object);
                 }
                 continue;
             }
@@ -183,8 +183,24 @@ public class InterfaceExecutor {
                             }
                             try
                             {
-                                iApp.debug("InterfaceExecutor.executorLimited","executing 【" + cls.getSimpleName() + "." + finalMethodName + "】 ...  "+pClassName+":"+Arrays.toString(object));
-                                method.invoke(instance, object);
+                                boolean has=true;
+                                synchronized (clsData)
+                                {
+                                    if (!clsData.contains(cls))
+                                    {
+                                        clsData.add(cls);
+                                        has=false;
+                                    }
+                                }
+                                if(!has)
+                                {
+                                    iApp.debug("InterfaceExecutor.executorLimited", "executing 【" + cls.getSimpleName() + "." + finalMethodName + "】 ...  " + pClassName + ":" + Arrays.toString(object));
+                                    method.invoke(instance, object);
+                                }
+                                else
+                                {
+                                    iApp.debug("InterfaceExecutor.executorLimited allready executed!",cls.getSimpleName());
+                                }
                             }
                             catch (Exception e)
                             {
@@ -231,17 +247,17 @@ public class InterfaceExecutor {
         }
     }
     public void executor(Class interfaceClass,Object... object) {
-        executorLimited(false,null,0,new ArrayList<>(), interfaceClass, object);
+        executorLimited(false,null,0,new ArrayList<>(),new DataResult<>(), interfaceClass, object);
     }
     public void executorMethod(Class interfaceClass,String methodName,Object... object) {
-        executorLimited(false,methodName,0, new ArrayList<>(),interfaceClass, object);
+        executorLimited(false,methodName,0, new ArrayList<>(),new DataResult<>(),interfaceClass, object);
     }
     public void executorOrderly(Class interfaceClass,Object... object) {
-        executorLimited(true,null,0, new ArrayList<>(),interfaceClass, object);
+        executorLimited(true,null,0, new ArrayList<>(),new DataResult<>(),interfaceClass, object);
     }
 
     public void executorMethodOrderly(Class interfaceClass,String methodName,Object... object) {
-        executorLimited(true,methodName,0,new ArrayList<>(), interfaceClass, object);
+        executorLimited(true,methodName,0,new ArrayList<>(), new DataResult<>(),interfaceClass, object);
     }
 
 }

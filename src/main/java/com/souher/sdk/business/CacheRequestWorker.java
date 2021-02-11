@@ -1,7 +1,6 @@
 package com.souher.sdk.business;
 
 import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.souher.sdk.api.SelectApi;
 import com.souher.sdk.database.DataModel;
@@ -9,18 +8,11 @@ import com.souher.sdk.database.DataResult;
 import com.souher.sdk.database.DatabaseOptions;
 import com.souher.sdk.extend.*;
 import com.souher.sdk.iApp;
-import com.souher.sdk.iRedis;
 import com.souher.sdk.interfaces.*;
-import com.souher.sdk.model.CacheTask;
-import redis.clients.jedis.Jedis;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class CacheRequestWorker implements iOnDataInserted,iOnDataUpdated,iOnDataDeleted, iAllModelWatcher
@@ -190,6 +182,14 @@ public class CacheRequestWorker implements iOnDataInserted,iOnDataUpdated,iOnDat
         try
         {
             iApp.debug(this.getClass().getSimpleName()+".onDataDeleted",model.toString());
+            if(iHasOtherCacheTriggerModels.class.isAssignableFrom(model.getClass()))
+            {
+                ((iHasOtherCacheTriggerModels)model).triggerUpdateModelsOnDeleted().forEachForcely(a->{
+                    new ExtendThread(()->{
+                        onDataUpdated(a);
+                    }).start();
+                });
+            }
             Object id=model.id();
             if(id==null)
             {
@@ -199,6 +199,7 @@ public class CacheRequestWorker implements iOnDataInserted,iOnDataUpdated,iOnDat
             String key=idKey(model.getClass(),id);
             if(!ids.containsKey(key))
             {
+                iApp.debug(this.getClass().getSimpleName()+".onDataDeleted","ids 不存在："+key);
                 return;
             }
             DataResult<String> list=DataResult.castE(ids.get(key));
@@ -206,12 +207,14 @@ public class CacheRequestWorker implements iOnDataInserted,iOnDataUpdated,iOnDat
             for (int i = 0; i < list.size(); i++)
             {
                 String request=list.get(i);
+                iApp.debug(this.getClass().getSimpleName()+".onDataDeleted","request："+request);
                 ArrayList<String> oneKeyList=cacheOne.keys("*:"+request);
                 if(oneKeyList.size()>0)
                 {
                     for (int i1 = 0; i1 < oneKeyList.size(); i1++)
                     {
-                        cacheOne.remove(oneKeyList.get(i));
+                        cacheOne.remove(oneKeyList.get(i1));
+                        iApp.debug(this.getClass().getSimpleName()+".onDataDeleted","oneKeyList handled："+oneKeyList.get(i1));
                     }
                     continue;
                 }
@@ -223,78 +226,9 @@ public class CacheRequestWorker implements iOnDataInserted,iOnDataUpdated,iOnDat
                 }
                 for (int i1 = 0; i1 < listKeyList.size(); i1++)
                 {
-                    String totalKey=listKeyList.get(i);
-                    String clsName=totalKey.substring(0,totalKey.indexOf(":"));
-                    Class<? extends DataModel> modelClass=Reflector.Default.searchDataModelClass(clsName.toLowerCase());
-                    JSONArray arr1=JSON.parseArray(cacheList.get(totalKey));
-                    if(arr1==null||arr1.size()==0)
-                    {
-                        continue;
-                    }
-                    DataResult<? extends DataModel> arr=new DataResult();
-                    arr1.forEach(a->{
-                        arr.add(JSON.parseObject(a.toString(), (Type) modelClass));
-                    });
-                    DataModel first=arr.get(0);
-                    DataResult<Class<? extends DataModel>> clses=new DataResult<>();
-                    if(iHasForeignKeys.class.isAssignableFrom(first.getClass()))
-                    {
-                        clses = ((iHasForeignKeys) first).foreignClasses();
-                    }
-
-                    DataModel delete=null;
-                    for(DataModel a : arr)
-                    {
-                        if(first.getClass().equals(model.getClass()))
-                        {
-                            Object idvalue=a.id();
-                            if(idvalue==null)
-                            {
-                                iApp.error("cached data has null id:"+request+":"+a.toString());
-                                continue;
-                            }
-                            if(idvalue.equals(model.id()))
-                            {
-                                delete=a;
-                                break;
-                            }
-                        }
-                        else
-                        {
-                            ConcurrentHashMap<String,DataModel> map=a.others().get(model.getClass());
-                            ArrayList<String> deleteKeys=new ArrayList<>();
-                            map.forEach((b,c)->{
-                                try
-                                {
-                                    Object idvalue = c.id();
-                                    if (idvalue == null)
-                                    {
-                                        iApp.error("cached data has null id:" + request + ":" + a.toString());
-                                        return;
-                                    }
-                                    if (model.id().equals(idvalue))
-                                    {
-                                        deleteKeys.add(b);
-
-                                    }
-                                }
-                                catch (Exception e)
-                                {
-                                    iApp.error(e);
-                                }
-                            });
-                            if(deleteKeys.size()>0)
-                            {
-                                deleteKeys.forEach(map::remove);
-                                a.others().put(model.getClass(),map);
-                            }
-                        }
-                    }
-                    if(delete!=null)
-                    {
-                        arr.remove(delete);
-                    }
-                    cacheList.put(listKeyList.get(i),JSON.toJSONString(arr));
+                    String totalKey=listKeyList.get(i1);
+                    cacheList.remove(listKeyList.get(i1));
+                    iApp.debug(this.getClass().getSimpleName()+".onDataDeleted","listKeyList handled："+listKeyList.get(i1));
                 }
             }
             ids.remove(key);
@@ -311,6 +245,14 @@ public class CacheRequestWorker implements iOnDataInserted,iOnDataUpdated,iOnDat
         try
         {
             iApp.debug(this.getClass().getSimpleName()+".onDataInserted",model.toString());
+            if(iHasOtherCacheTriggerModels.class.isAssignableFrom(model.getClass()))
+            {
+                ((iHasOtherCacheTriggerModels)model).triggerUpdateModelsOnInserted().forEachForcely(a->{
+                    new ExtendThread(()->{
+                        onDataUpdated(a);
+                    }).start();
+                });
+            }
             ArrayList<String> keys=properties.keys(model.getClass().getSimpleName()+":*");
             JSONObject obj=JSON.parseObject(model.toStringWithOutNull());
             obj.remove("id");
@@ -354,9 +296,14 @@ public class CacheRequestWorker implements iOnDataInserted,iOnDataUpdated,iOnDat
                     updateKeys.add(key);
                 }
             }
+
             iApp.debug(this.getClass().getSimpleName()+":updateKeys",updateKeys.toString());
             for (int i = 0; i < updateKeys.size(); i++)
             {
+                if(!properties.containsKey(updateKeys.get(i)))
+                {
+                    continue;
+                }
                 DataResult<String> list=DataResult.castE(properties.get(updateKeys.get(i)));
                 for (int i1 = 0; i1 < list.size(); i1++)
                 {
@@ -365,7 +312,17 @@ public class CacheRequestWorker implements iOnDataInserted,iOnDataUpdated,iOnDat
                         String request=list.get(i1);
                         request=request.replaceAll("@=",":");
                         iApp.debug("forceSelectApi.request",request);
-                        SelectApi.forceSelectApi.getJSON(JSONObject.parseObject(request), 0);
+                        String finalRequest = request;
+                        new ExtendThread(()->{
+                            try
+                            {
+                                SelectApi.forceSelectApi.getJSON(JSONObject.parseObject(finalRequest), 0);
+                            }
+                            catch (Exception e)
+                            {
+                                iApp.error(e);
+                            }
+                        }).start();
                     }
                     catch (Exception e)
                     {
@@ -386,6 +343,10 @@ public class CacheRequestWorker implements iOnDataInserted,iOnDataUpdated,iOnDat
             iApp.debug(this.getClass().getSimpleName()+".onMultiDataUpdated",allModels.toString());
             ConcurrentHashMap<String,Boolean> map=new ConcurrentHashMap<>();
             allModels.forEachForcely(model->{
+                if(iHasOtherCacheTriggerModels.class.isAssignableFrom(model.getClass()))
+                {
+                    onMultiDataUpdated(((iHasOtherCacheTriggerModels)model).triggerUpdateModelsOnUpdated());
+                }
                 Object id=model.id();
                 if(id==null)
                 {
@@ -397,7 +358,9 @@ public class CacheRequestWorker implements iOnDataInserted,iOnDataUpdated,iOnDat
                 {
                     return;
                 }
-                ids.get(key).forEach(request->{map.put(request,true);});
+                DataResult<String> list=DataResult.castE(ids.get(key));
+
+                list.forEach(request->{map.put(request,true);});
             });
 
             DataResult<String> list=DataResult.castE(map.keySet());
@@ -409,7 +372,17 @@ public class CacheRequestWorker implements iOnDataInserted,iOnDataUpdated,iOnDat
                 iApp.debug("forceSelectApi.request",request);
                 try
                 {
-                    SelectApi.forceSelectApi.getJSON(JSONObject.parseObject(request), 0);
+                    String finalRequest = request;
+                    new ExtendThread(()->{
+                        try
+                        {
+                            SelectApi.forceSelectApi.getJSON(JSONObject.parseObject(finalRequest), 0);
+                        }
+                        catch (Exception e)
+                        {
+                            iApp.error(e);
+                        }
+                    }).start();
                 }
                 catch (Exception e)
                 {
@@ -441,7 +414,14 @@ public class CacheRequestWorker implements iOnDataInserted,iOnDataUpdated,iOnDat
                 return;
             }
             DataResult<String> list=DataResult.castE(ids.get(key));
-
+            if(iHasOtherCacheTriggerModels.class.isAssignableFrom(model.getClass()))
+            {
+                ((iHasOtherCacheTriggerModels)model).triggerUpdateModelsOnUpdated().forEachForcely(a->{
+                    new ExtendThread(()->{
+                        onDataUpdated(a);
+                    }).start();
+                });
+            }
             for (int i = 0; i < list.size(); i++)
             {
                 String request = list.get(i);
@@ -449,13 +429,24 @@ public class CacheRequestWorker implements iOnDataInserted,iOnDataUpdated,iOnDat
                 iApp.debug("forceSelectApi.request",request);
                 try
                 {
-                    SelectApi.forceSelectApi.getJSON(JSONObject.parseObject(request), 0);
+                    String finalRequest = request;
+                    new ExtendThread(()->{
+                        try
+                        {
+                            SelectApi.forceSelectApi.getJSON(JSONObject.parseObject(finalRequest), 0);
+                        }
+                        catch (Exception e)
+                        {
+                            iApp.error(e);
+                        }
+                    }).start();
                 }
                 catch (Exception e)
                 {
                     iApp.error(e);
                 }
             }
+            this.onDataInserted(model);
         }
         catch (Exception e)
         {

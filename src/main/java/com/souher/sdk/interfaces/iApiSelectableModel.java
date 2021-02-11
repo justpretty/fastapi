@@ -21,16 +21,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 public interface iApiSelectableModel
 {
     long maxPageSize=30;
-
     default String[] nonSearchableFields()
     {
         return new String[]{"create_datetime","update_datetime"};
     }
-
     default String deleteField(){
         return "";
     }
-
     default long pageSize()
     {
         return 25;

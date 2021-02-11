@@ -17,13 +17,9 @@ public class Monitor implements iOnEveryMinuteForAll
     {
         DatabaseStatus databaseStatus=new DatabaseStatus();
         databaseStatus.tag=iApp.debugHead.get();
-//        iApp.debug(Monitor.class.getSimpleName(),"beforefirst:",databaseStatus.toString());
         databaseStatus.first();
-//        iApp.debug(Monitor.class.getSimpleName(),"afterfirst:",databaseStatus.toString());
         databaseStatus.active_count= DataModel.getDatabase().dataSource().getActiveCount();
         databaseStatus.pool_count=DataModel.getDatabase().dataSource().getPoolingCount();
-//        iApp.debug(Monitor.class.getSimpleName(),"beforesave:",databaseStatus.toString());
         databaseStatus.save();
-//        iApp.debug(Monitor.class.getSimpleName(),"aftersave:",databaseStatus.toString());
     }
 }

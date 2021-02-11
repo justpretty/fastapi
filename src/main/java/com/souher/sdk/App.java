@@ -9,7 +9,7 @@ public class App
     public static File jarFile=null;
     public static Class<?> mainClass=null;
 
-    public static void main(String[] args) {
-        iApp.init(args);
-    }
+//    public static void main(String[] args) {
+//        iApp.init(args);
+//    }
 }

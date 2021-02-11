@@ -255,6 +255,10 @@ public class DataModel {
             InterfaceExecutor.Current.executor(iOnDataInserted.class, this);
             InterfaceExecutor.Current.executor(iOnDataSaved.class, this);
         }
+        else if(!noTrigger)
+        {
+            iApp.error("insert fail:"+resultId+"");
+        }
         return resultId;
     }
 
